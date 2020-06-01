@@ -25,8 +25,8 @@ impl Icons {
 }
 
 pub fn painted_icon(file: &File, style: &FileStyle) -> String {
-    let file_icon = icon(&file).to_string();
-    let painted = style
+    let file_icon = format!("{}  ", icon(&file).to_string());
+    style
         .exts
         .colour_file(&file)
         .map_or(file_icon.to_string(), |c| {
@@ -39,16 +39,13 @@ pub fn painted_icon(file: &File, style: &FileStyle) -> String {
             } else {
                 c.paint(file_icon).to_string()
             }
-        });
-    format!("{}  ", painted)
+        })
 }
 
 fn icon(file: &File) -> char {
     let extensions = Box::new(FileExtensions);
     if file.is_directory() {
         '\u{f115}'
-    } else if file.is_hidden() {
-        '\u{fb12}'
     } else if let Some(icon) = extensions.icon_file(file) {
         icon
     } else if let Some(ext) = file.ext.as_ref() {

@@ -52,6 +52,7 @@ pub struct Attribute {
 }
 
 #[cfg(any(target_os = "macos", target_os = "linux"))]
+#[allow(clippy::comparison_chain)]
 pub fn list_attrs(lister: &lister::Lister, path: &Path) -> io::Result<Vec<Attribute>> {
     use std::ffi::CString;
 
@@ -68,7 +69,6 @@ pub fn list_attrs(lister: &lister::Lister, path: &Path) -> io::Result<Vec<Attrib
     let mut names = Vec::new();
     let bufsize = lister.listxattr_first(&c_path);
 
-    #[allow(clippy::comparison_chain)]
     if bufsize < 0 {
         return Err(io::Error::last_os_error());
     } else if bufsize > 0 {
@@ -111,7 +111,7 @@ mod lister {
     use std::ffi::CString;
     use std::ptr;
 
-    use libc::{c_char, c_int, c_void, size_t, ssize_t, uint32_t};
+    use libc::{c_char, c_int, c_void, size_t, ssize_t, u32};
 
     use super::FollowSymlinks;
 
@@ -128,7 +128,7 @@ mod lister {
             name: *const c_char,
             value: *mut c_void,
             size: size_t,
-            position: uint32_t,
+            position: u32,
             options: c_int,
         ) -> ssize_t;
     }
