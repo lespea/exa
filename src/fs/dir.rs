@@ -1,3 +1,5 @@
+use crate::fs::feature::git::GitCache;
+use crate::fs::fields::GitStatus;
 use std::io::{self, Result as IOResult};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -9,7 +11,6 @@ use scoped_threadpool::Pool;
 use log::info;
 
 use crate::fs::File;
-use crate::fs::feature::ignore::IgnoreCache;
 
 
 /// A **Dir** provides a cached list of the file paths in a directory that's
@@ -47,9 +48,7 @@ impl Dir {
 
     /// Produce an iterator of IO results of trying to read all the files in
     /// this directory.
-    pub fn files<'dir, 'ig>(&'dir self, dots: DotFilter, ignore: Option<&'ig IgnoreCache>, pool: Option<&mut Pool>) -> Files<'dir, 'ig> {
-        if let Some(i) = ignore { i.discover_underneath(&self.path); }
-
+    pub fn files<'dir, 'ig>(&'dir self, dots: DotFilter, git: Option<&'ig GitCache>, pool: Option<&mut Pool>) -> Files<'dir, 'ig> {
         // File::new calls std::fs::File::metadata, which on linux calls lstat. On some
         // filesystems this can be very slow, but there's no async filesystem API
         // so all we can do to hide the latency is use system threads.
@@ -89,7 +88,7 @@ impl Dir {
             dir: self,
             dotfiles: dots.shows_dotfiles(),
             dots: dots.dots(),
-            ignore,
+            git,
         }
     }
 
@@ -121,7 +120,7 @@ pub struct Files<'dir, 'ig> {
     /// any files have been listed.
     dots: Dots,
 
-    ignore: Option<&'ig IgnoreCache>,
+    git: Option<&'ig GitCache>,
 }
 
 impl<'dir, 'ig> Files<'dir, 'ig> {
@@ -142,8 +141,9 @@ impl<'dir, 'ig> Files<'dir, 'ig> {
                 let filename = File::filename(&path);
                 if !self.dotfiles && filename.starts_with('.') { continue; }
 
-                if let Some(i) = self.ignore {
-                    if i.is_ignored(&path) { continue; }
+                let git_status = self.git.map(|g| g.get(path, false)).unwrap_or_default();
+                if git_status.unstaged == GitStatus::Ignored {
+                     continue;
                 }
 
                 let target_metadata = target_metadata.map(|m| m.map_err(|e| Arc::try_unwrap(e).unwrap()));
