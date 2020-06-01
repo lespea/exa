@@ -9,7 +9,8 @@ use crate::output::table::SizeFormat;
 
 impl f::Size {
     pub fn render<C: Colours>(&self, colours: &C, size_format: SizeFormat, numerics: &NumericLocale) -> TextCell {
-        use number_prefix::{Prefixed, Standalone, NumberPrefix, PrefixNames};
+        use number_prefix::{NumberPrefix};
+        use number_prefix::NumberPrefix::{Prefixed, Standalone};
 
         let size = match *self {
             f::Size::Some(s)             => s,
