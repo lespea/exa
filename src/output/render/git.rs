@@ -40,12 +40,13 @@ pub trait Colours {
 
 #[cfg(test)]
 pub mod test {
-    use super::Colours;
+    use ansi_term::Colour::*;
+    use ansi_term::Style;
+
     use crate::fs::fields as f;
     use crate::output::cell::{DisplayWidth, TextCell};
 
-    use ansi_term::Colour::*;
-    use ansi_term::Style;
+    use super::Colours;
 
     struct TestColours;
 

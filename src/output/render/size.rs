@@ -93,15 +93,16 @@ pub trait Colours {
 
 #[cfg(test)]
 pub mod test {
-    use super::Colours;
-    use crate::fs::fields as f;
-    use crate::output::cell::{DisplayWidth, TextCell};
-    use crate::output::table::SizeFormat;
-
     use ansi_term::Colour::*;
     use ansi_term::Style;
     use locale::Numeric as NumericLocale;
     use number_prefix::Prefix;
+
+    use crate::fs::fields as f;
+    use crate::output::cell::{DisplayWidth, TextCell};
+    use crate::output::table::SizeFormat;
+
+    use super::Colours;
 
     struct TestColours;
 

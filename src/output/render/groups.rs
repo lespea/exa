@@ -36,15 +36,16 @@ pub trait Colours {
 #[cfg(test)]
 #[allow(unused_results)]
 pub mod test {
-    use super::Colours;
+    use ansi_term::Colour::*;
+    use ansi_term::Style;
+    use users::{Group, User};
+    use users::mock::MockUsers;
+    use users::os::unix::GroupExt;
+
     use crate::fs::fields as f;
     use crate::output::cell::TextCell;
 
-    use ansi_term::Colour::*;
-    use ansi_term::Style;
-    use users::mock::MockUsers;
-    use users::os::unix::GroupExt;
-    use users::{Group, User};
+    use super::Colours;
 
     struct TestColours;
 

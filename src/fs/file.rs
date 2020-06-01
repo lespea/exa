@@ -512,8 +512,9 @@ mod modes {
 
 #[cfg(test)]
 mod ext_test {
-    use super::File;
     use std::path::Path;
+
+    use super::File;
 
     #[test]
     fn extension() {
@@ -533,8 +534,9 @@ mod ext_test {
 
 #[cfg(test)]
 mod filename_test {
-    use super::File;
     use std::path::Path;
+
+    use super::File;
 
     #[test]
     fn file() {

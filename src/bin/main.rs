@@ -1,10 +1,12 @@
 extern crate exa;
-use exa::Exa;
+extern crate libc;
 
 use std::env::{args_os, var_os};
 use std::ffi::OsString;
-use std::io::{stderr, stdout, ErrorKind, Write};
+use std::io::{ErrorKind, stderr, stdout, Write};
 use std::process::exit;
+
+use exa::Exa;
 
 fn main() {
     configure_logger();
@@ -70,7 +72,6 @@ pub fn configure_logger() {
     logs.init()
 }
 
-extern crate libc;
 #[allow(trivial_numeric_casts)]
 mod exits {
     use libc::{self, c_int};

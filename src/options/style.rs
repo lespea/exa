@@ -2,9 +2,10 @@ use ansi_term::Style;
 use glob;
 
 use crate::fs::File;
-use crate::options::parser::MatchedFlags;
 use crate::options::{flags, Misfire, Vars};
+use crate::options::parser::MatchedFlags;
 use crate::output::file_name::{Classify, FileStyle};
+use crate::output::file_name::FileColours;
 use crate::style::Colours;
 
 /// Under what circumstances we should display coloured, rather than plain,
@@ -170,7 +171,6 @@ struct ExtensionMappings {
 // Loop through backwards so that colours specified later in the list override
 // colours specified earlier, like we do with options and strict mode
 
-use crate::output::file_name::FileColours;
 impl FileColours for ExtensionMappings {
     fn colour_file(&self, file: &File) -> Option<Style> {
         self.mappings
@@ -205,13 +205,14 @@ impl Classify {
 
 #[cfg(test)]
 mod terminal_test {
-    use super::*;
-    use crate::options::flags;
-    use crate::options::parser::{Arg, Flag};
     use std::ffi::OsString;
 
+    use crate::options::flags;
+    use crate::options::parser::{Arg, Flag};
     use crate::options::test::parse_for_test;
     use crate::options::test::Strictnesses::*;
+
+    use super::*;
 
     static TEST_ARGS: &[&Arg] = &[&flags::COLOR, &flags::COLOUR];
 
@@ -270,12 +271,12 @@ mod terminal_test {
 
 #[cfg(test)]
 mod colour_test {
-    use super::*;
     use crate::options::flags;
     use crate::options::parser::{Arg, Flag};
-
     use crate::options::test::parse_for_test;
     use crate::options::test::Strictnesses::*;
+
+    use super::*;
 
     static TEST_ARGS: &[&Arg] = &[
         &flags::COLOR,
@@ -347,10 +348,11 @@ mod colour_test {
 mod customs_test {
     use std::ffi::OsString;
 
-    use super::*;
+    use ansi_term::Colour::*;
+
     use crate::options::Vars;
 
-    use ansi_term::Colour::*;
+    use super::*;
 
     macro_rules! test {
         ($name:ident:  ls $ls:expr, exa $exa:expr  =>  colours $expected:ident -> $process_expected:expr) => {

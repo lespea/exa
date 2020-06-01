@@ -1,9 +1,8 @@
 //! Parsing the options for `DirAction`.
 
-use crate::options::parser::MatchedFlags;
-use crate::options::{flags, Misfire};
-
 use crate::fs::dir_action::{DirAction, RecurseOptions};
+use crate::options::{flags, Misfire};
+use crate::options::parser::MatchedFlags;
 
 impl DirAction {
     /// Determine which action to perform when trying to list a directory.
@@ -63,9 +62,13 @@ impl RecurseOptions {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use crate::options::flags;
     use crate::options::parser::Flag;
+
+    use super::*;
+
+    // Recursing
+    use self::DirAction::Recurse;
 
     macro_rules! test {
         ($name:ident: $type:ident <- $inputs:expr; $stricts:expr => $result:expr) => {
@@ -97,8 +100,6 @@ mod test {
     test!(dirs_short:      DirAction <- ["-d"];           Both => Ok(DirAction::AsFile));
     test!(dirs_long:       DirAction <- ["--list-dirs"];  Both => Ok(DirAction::AsFile));
 
-    // Recursing
-    use self::DirAction::Recurse;
     test!(rec_short:       DirAction <- ["-R"];                           Both => Ok(Recurse(RecurseOptions { tree: false, max_depth: None })));
     test!(rec_long:        DirAction <- ["--recurse"];                    Both => Ok(Recurse(RecurseOptions { tree: false, max_depth: None })));
     test!(rec_lim_short:   DirAction <- ["-RL4"];                         Both => Ok(Recurse(RecurseOptions { tree: false, max_depth: Some(4) })));

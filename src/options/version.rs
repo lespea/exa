@@ -38,8 +38,9 @@ impl fmt::Display for VersionString {
 
 #[cfg(test)]
 mod test {
-    use crate::options::Options;
     use std::ffi::OsString;
+
+    use crate::options::Options;
 
     fn os(input: &'static str) -> OsString {
         let mut os = OsString::new();

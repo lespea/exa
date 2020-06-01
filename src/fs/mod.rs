@@ -1,9 +1,8 @@
-mod dir;
 pub use self::dir::{Dir, DotFilter};
-
-mod file;
 pub use self::file::{File, FileTarget};
 
+mod dir;
+mod file;
 pub mod dir_action;
 pub mod feature;
 pub mod fields;

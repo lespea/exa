@@ -1,13 +1,12 @@
 use lazy_static::lazy_static;
 
-use crate::options::parser::MatchedFlags;
+use crate::fs::feature::xattr;
 use crate::options::{flags, Misfire, Vars};
+use crate::options::parser::MatchedFlags;
+use crate::output::{details, grid, lines, Mode, View};
 use crate::output::grid_details::{self, RowThreshold};
 use crate::output::table::{Columns, Environment, Options as TableOptions, SizeFormat, TimeTypes};
 use crate::output::time::TimeFormat;
-use crate::output::{details, grid, lines, Mode, View};
-
-use crate::fs::feature::xattr;
 
 impl View {
     /// Determine which view to use and all of that view’s arguments.
@@ -400,13 +399,14 @@ lazy_static! {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::options::flags;
-    use crate::options::parser::{Arg, Flag};
     use std::ffi::OsString;
 
+    use crate::options::flags;
+    use crate::options::parser::{Arg, Flag};
     use crate::options::test::parse_for_test;
     use crate::options::test::Strictnesses::*;
+
+    use super::*;
 
     static TEST_ARGS: &[&Arg] = &[
         &flags::BINARY,
@@ -529,7 +529,7 @@ mod test {
     mod time_formats {
         use super::*;
 
-        // These tests use pattern matching because TimeFormat doesn’t
+// These tests use pattern matching because TimeFormat doesn’t
         // implement PartialEq.
 
         // Default behaviour
@@ -604,10 +604,10 @@ mod test {
     }
 
     mod views {
-        use super::*;
-
         use crate::output::grid::Options as GridOptions;
         use crate::output::lines::Options as LineOptions;
+
+        use super::*;
 
         // Default
         test!(empty:         Mode <- [], None;            Both => like Ok(Mode::Grid(_)));

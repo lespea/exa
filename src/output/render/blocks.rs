@@ -22,9 +22,10 @@ pub mod test {
     use ansi_term::Colour::*;
     use ansi_term::Style;
 
-    use super::Colours;
     use crate::fs::fields as f;
     use crate::output::cell::TextCell;
+
+    use super::Colours;
 
     struct TestColours;
 

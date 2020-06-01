@@ -1,7 +1,8 @@
+use std::iter::Peekable;
 use std::ops::FnMut;
 
-use ansi_term::Colour::*;
 use ansi_term::{Colour, Style};
+use ansi_term::Colour::*;
 
 // Parsing the LS_COLORS environment variable into a map of names to Style values.
 //
@@ -45,7 +46,6 @@ pub struct Pair<'var> {
     pub value: &'var str,
 }
 
-use std::iter::Peekable;
 fn parse_into_high_colour<'a, I>(iter: &mut Peekable<I>) -> Option<Colour>
 where
     I: Iterator<Item = &'a str>,
@@ -146,8 +146,9 @@ impl<'var> Pair<'var> {
 
 #[cfg(test)]
 mod ansi_test {
-    use super::*;
     use ansi_term::Style;
+
+    use super::*;
 
     macro_rules! test {
         ($name:ident: $input:expr => $result:expr) => {

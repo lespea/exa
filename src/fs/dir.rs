@@ -1,15 +1,13 @@
-use crate::fs::feature::git::GitCache;
-use crate::fs::fields::GitStatus;
 use std::fs;
 use std::io::{self, Result as IOResult};
 use std::path::{Path, PathBuf};
-
 use std::sync::Arc;
 
+use log::info;
 use scoped_threadpool::Pool;
 
-use log::info;
-
+use crate::fs::feature::git::GitCache;
+use crate::fs::fields::GitStatus;
 use crate::fs::File;
 
 /// A **Dir** provides a cached list of the file paths in a directory that's

@@ -3,19 +3,18 @@
 
 use std::env::var_os;
 use std::ffi::{OsStr, OsString};
-use std::io::{stderr, Result as IOResult, Write};
+use std::io::{Result as IOResult, stderr, Write};
 use std::path::{Component, PathBuf};
 
 use ansi_term::{ANSIStrings, Style};
+use log::debug;
 use scoped_threadpool::Pool;
 
-use log::debug;
-
-use crate::fs::feature::git::GitCache;
 use crate::fs::{Dir, File};
-pub use crate::options::vars;
-pub use crate::options::Misfire;
+use crate::fs::feature::git::GitCache;
 use crate::options::{Options, Vars};
+pub use crate::options::Misfire;
+pub use crate::options::vars;
 use crate::output::{details, escape, grid, grid_details, lines, Mode, View};
 
 mod fs;

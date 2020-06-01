@@ -11,10 +11,10 @@ impl f::Inode {
 
 #[cfg(test)]
 pub mod test {
+    use ansi_term::Colour::*;
+
     use crate::fs::fields as f;
     use crate::output::cell::TextCell;
-
-    use ansi_term::Colour::*;
 
     #[test]
     fn blocklessness() {

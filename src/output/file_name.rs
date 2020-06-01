@@ -1,3 +1,6 @@
+// needs Debug because FileStyle derives it
+use std::fmt::Debug;
+use std::marker::Sync;
 use std::path::Path;
 
 use ansi_term::{ANSIString, Style};
@@ -300,9 +303,6 @@ pub trait Colours: FiletypeColours {
     fn executable_file(&self) -> Style;
 }
 
-// needs Debug because FileStyle derives it
-use std::fmt::Debug;
-use std::marker::Sync;
 pub trait FileColours: Debug + Sync {
     fn colour_file(&self, file: &File) -> Option<Style>;
 }

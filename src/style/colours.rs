@@ -3,7 +3,6 @@ use ansi_term::Style;
 
 use crate::output::file_name::Colours as FileNameColours;
 use crate::output::render;
-
 use crate::style::lsc::Pair;
 
 #[derive(Debug, Default, PartialEq)]

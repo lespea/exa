@@ -1,10 +1,9 @@
 //! Parsing the options for `FileFilter`.
 
-use crate::fs::filter::{FileFilter, GitIgnore, IgnorePatterns, SortCase, SortField};
 use crate::fs::DotFilter;
-
-use crate::options::parser::MatchedFlags;
+use crate::fs::filter::{FileFilter, GitIgnore, IgnorePatterns, SortCase, SortField};
 use crate::options::{flags, Misfire};
+use crate::options::parser::MatchedFlags;
 
 impl FileFilter {
     /// Determines which of all the file filter options to use.
@@ -168,10 +167,12 @@ impl GitIgnore {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use std::ffi::OsString;
+
     use crate::options::flags;
     use crate::options::parser::Flag;
-    use std::ffi::OsString;
+
+    use super::*;
 
     macro_rules! test {
         ($name:ident: $type:ident <- $inputs:expr; $stricts:expr => $result:expr) => {
@@ -249,9 +250,11 @@ mod test {
     }
 
     mod ignore_patterns {
-        use super::*;
-        use glob;
         use std::iter::FromIterator;
+
+        use glob;
+
+        use super::*;
 
         fn pat(string: &'static str) -> glob::Pattern {
             glob::Pattern::new(string).unwrap()

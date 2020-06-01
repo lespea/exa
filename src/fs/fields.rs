@@ -15,6 +15,8 @@
 #![allow(non_camel_case_types)]
 
 
+use std::default::Default;
+
 /// The type of a file’s block count.
 pub type blkcnt_t = u64;
 
@@ -207,7 +209,6 @@ pub struct Git {
     pub unstaged: GitStatus,
 }
 
-use std::default::Default;
 impl Default for Git {
     /// Create a Git status for a file with nothing done to it.
     fn default() -> Git {

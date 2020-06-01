@@ -65,20 +65,19 @@ use std::path::PathBuf;
 use std::vec::IntoIter as VecIntoIter;
 
 use ansi_term::{ANSIGenericString, Style};
+use scoped_threadpool::Pool;
 
+use crate::fs::{Dir, File};
 use crate::fs::dir_action::RecurseOptions;
 use crate::fs::feature::git::GitCache;
 use crate::fs::feature::xattr::{Attribute, FileAttributes};
 use crate::fs::filter::FileFilter;
-use crate::fs::{Dir, File};
 use crate::output::cell::TextCell;
 use crate::output::file_name::FileStyle;
 use crate::output::icons::painted_icon;
 use crate::output::table::{Options as TableOptions, Row as TableRow, Table};
 use crate::output::tree::{TreeDepth, TreeParams, TreeTrunk};
 use crate::style::Colours;
-
-use scoped_threadpool::Pool;
 
 /// With the **Details** view, the output gets formatted into columns, with
 /// each `Column` object showing some piece of information about the file,

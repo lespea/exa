@@ -1,5 +1,6 @@
 //! Getting the Git status of files and directories.
 
+use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -34,7 +35,6 @@ impl GitCache {
     }
 }
 
-use std::iter::FromIterator;
 impl FromIterator<PathBuf> for GitCache {
     fn from_iter<I: IntoIterator<Item = PathBuf>>(iter: I) -> Self {
         let iter = iter.into_iter();

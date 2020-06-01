@@ -1,5 +1,6 @@
 //! Extended attribute support for Darwin and Linux systems.
-#![allow(trivial_casts)] // for ARM
+#![allow(trivial_casts)]
+// for ARM
 extern crate libc;
 
 use std::io;
@@ -106,10 +107,12 @@ pub fn list_attrs(lister: &lister::Lister, path: &Path) -> io::Result<Vec<Attrib
 
 #[cfg(target_os = "macos")]
 mod lister {
-    use super::FollowSymlinks;
-    use libc::{c_char, c_int, c_void, size_t, ssize_t, uint32_t};
     use std::ffi::CString;
     use std::ptr;
+
+    use libc::{c_char, c_int, c_void, size_t, ssize_t, uint32_t};
+
+    use super::FollowSymlinks;
 
     extern "C" {
         fn listxattr(
@@ -186,10 +189,12 @@ mod lister {
 
 #[cfg(target_os = "linux")]
 mod lister {
-    use super::FollowSymlinks;
-    use libc::{c_char, c_void, size_t, ssize_t};
     use std::ffi::CString;
     use std::ptr;
+
+    use libc::{c_char, c_void, size_t, ssize_t};
+
+    use super::FollowSymlinks;
 
     extern "C" {
         fn listxattr(path: *const c_char, list: *mut c_char, size: size_t) -> ssize_t;

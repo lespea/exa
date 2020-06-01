@@ -74,26 +74,23 @@ use crate::fs::dir_action::DirAction;
 use crate::fs::filter::{FileFilter, GitIgnore};
 use crate::output::{details, grid_details, Mode, View};
 
+use self::help::HelpString;
+pub use self::misfire::Misfire;
+use self::parser::MatchedFlags;
+pub use self::vars::Vars;
+use self::version::VersionString;
+
 mod dir_action;
 mod filter;
 mod style;
 mod view;
 
 mod help;
-use self::help::HelpString;
-
 mod version;
-use self::version::VersionString;
-
 mod misfire;
-pub use self::misfire::Misfire;
-
 pub mod vars;
-pub use self::vars::Vars;
-
 mod flags;
 mod parser;
-use self::parser::MatchedFlags;
 
 /// These **options** represent a parsed, error-checked versions of the
 /// user’s command-line options.
@@ -182,9 +179,11 @@ impl Options {
 
 #[cfg(test)]
 pub mod test {
-    use super::{flags, Misfire, Options};
-    use crate::options::parser::{Arg, MatchedFlags};
     use std::ffi::OsString;
+
+    use crate::options::parser::{Arg, MatchedFlags};
+
+    use super::{flags, Misfire, Options};
 
     #[derive(PartialEq, Debug)]
     pub enum Strictnesses {
