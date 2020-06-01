@@ -111,7 +111,7 @@ mod lister {
     use std::ffi::CString;
     use std::ptr;
 
-    use libc::{c_char, c_int, c_void, size_t, ssize_t, u32};
+    use libc::{c_char, c_int, c_void, size_t, ssize_t};
 
     use super::FollowSymlinks;
 
