@@ -193,27 +193,27 @@ impl<'dir, 'ig> Files<'dir, 'ig> {
 /// If these aren’t being printed, then `FilesNext` is used to skip them.
 enum Dots {
     /// List the `.` directory next.
-    DotNext,
+    Dot,
 
     /// List the `..` directory next.
-    DotDotNext,
+    DotDot,
 
     /// Forget about the dot directories and just list files.
-    FilesNext,
+    Files,
 }
 
 impl<'dir, 'ig> Iterator for Files<'dir, 'ig> {
     type Item = Result<File<'dir>, (PathBuf, io::Error)>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Dots::DotNext = self.dots {
-            self.dots = Dots::DotDotNext;
+        if let Dots::Dot = self.dots {
+            self.dots = Dots::DotDot;
             Some(
                 File::from_args(self.dir.path.to_path_buf(), self.dir, String::from("."))
                     .map_err(|e| (Path::new(".").to_path_buf(), e)),
             )
-        } else if let Dots::DotDotNext = self.dots {
-            self.dots = Dots::FilesNext;
+        } else if let Dots::DotDot = self.dots {
+            self.dots = Dots::Files;
             Some(
                 File::from_args(self.parent(), self.dir, String::from(".."))
                     .map_err(|e| (self.parent(), e)),
@@ -258,9 +258,9 @@ impl DotFilter {
     /// Whether this filter should add dot directories to a listing.
     fn dots(self) -> Dots {
         match self {
-            DotFilter::JustFiles => Dots::FilesNext,
-            DotFilter::Dotfiles => Dots::FilesNext,
-            DotFilter::DotfilesAndDots => Dots::DotNext,
+            DotFilter::JustFiles => Dots::Files,
+            DotFilter::Dotfiles => Dots::Files,
+            DotFilter::DotfilesAndDots => Dots::Dot,
         }
     }
 }
