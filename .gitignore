@@ -19,3 +19,4 @@ parts
 prime
 stage
 *.snap
+.idea
