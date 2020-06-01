@@ -68,6 +68,7 @@ pub fn list_attrs(lister: &lister::Lister, path: &Path) -> io::Result<Vec<Attrib
     let mut names = Vec::new();
     let bufsize = lister.listxattr_first(&c_path);
 
+    #[allow(clippy::comparison_chain)]
     if bufsize < 0 {
         return Err(io::Error::last_os_error());
     } else if bufsize > 0 {
