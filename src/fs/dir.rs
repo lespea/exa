@@ -1,7 +1,10 @@
 use std::io::{self, Result as IOResult};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::slice::Iter as SliceIter;
+
+use std::sync::Arc;
+
+use scoped_threadpool::Pool;
 
 use log::info;
 
@@ -16,7 +19,6 @@ use crate::fs::feature::ignore::IgnoreCache;
 /// check the existence of surrounding files, then highlight themselves
 /// accordingly. (See `File#get_source_files`)
 pub struct Dir {
-
     /// A vector of the files that have been read from this directory.
     contents: Vec<PathBuf>,
 
@@ -25,7 +27,6 @@ pub struct Dir {
 }
 
 impl Dir {
-
     /// Create a new Dir object filled with all the files in the directory
     /// pointed to by the given path. Fails if the directory can’t be read, or
     /// isn’t actually a directory, or if there’s an IO error that occurs at
@@ -38,22 +39,56 @@ impl Dir {
         info!("Reading directory {:?}", &path);
 
         let contents = fs::read_dir(&path)?
-                                             .map(|result| result.map(|entry| entry.path()))
-                                             .collect::<Result<_,_>>()?;
+            .map(|result| result.map(|entry| entry.path()))
+            .collect::<Result<_, _>>()?;
 
         Ok(Dir { contents, path })
     }
 
     /// Produce an iterator of IO results of trying to read all the files in
     /// this directory.
-    pub fn files<'dir, 'ig>(&'dir self, dots: DotFilter, ignore: Option<&'ig IgnoreCache>) -> Files<'dir, 'ig> {
+    pub fn files<'dir, 'ig>(&'dir self, dots: DotFilter, ignore: Option<&'ig IgnoreCache>, pool: Option<&mut Pool>) -> Files<'dir, 'ig> {
         if let Some(i) = ignore { i.discover_underneath(&self.path); }
 
+        // File::new calls std::fs::File::metadata, which on linux calls lstat. On some
+        // filesystems this can be very slow, but there's no async filesystem API
+        // so all we can do to hide the latency is use system threads.
+        let mut metadata = vec![None; self.contents.len()];
+        if let Some(pool) = pool {
+            let chunksize = (self.contents.len() / pool.thread_count() as usize).max(1);
+            pool.scoped(|scoped| {
+                for (path_chunk, meta_chunk) in self.contents.chunks(chunksize).zip(metadata.chunks_mut(chunksize)) {
+                    scoped.execute(move || {
+                        for (path, e) in path_chunk.iter().zip(meta_chunk.iter_mut()) {
+                            let meta = fs::symlink_metadata(path).map_err(Arc::new);
+                            let link_target = if meta.as_ref().map(|m| m.file_type().is_symlink()).unwrap_or(false) {
+                                Some(fs::metadata(path).map_err(Arc::new))
+                            } else {
+                                None
+                            };
+                            *e = Some((meta, link_target));
+                        }
+                    });
+                }
+            });
+        } else {
+            for (path, e) in self.contents.iter().zip(metadata.iter_mut()) {
+                let meta = fs::symlink_metadata(path).map_err(Arc::new);
+                let link_target = if meta.as_ref().map(|m| m.file_type().is_symlink()).unwrap_or(false) {
+                    Some(fs::metadata(path).map_err(Arc::new))
+                } else {
+                    None
+                };
+                *e = Some((meta, link_target));
+            }
+        }
+        let metadata = metadata.into_iter().map(|m| m.unwrap()).collect::<Vec<_>>();
+
         Files {
-            inner:     self.contents.iter(),
-            dir:       self,
-            dotfiles:  dots.shows_dotfiles(),
-            dots:      dots.dots(),
+            inner: self.contents.iter().zip(metadata),
+            dir: self,
+            dotfiles: dots.shows_dotfiles(),
+            dots: dots.dots(),
             ignore,
         }
     }
@@ -72,9 +107,9 @@ impl Dir {
 
 /// Iterator over reading the contents of a directory as `File` objects.
 pub struct Files<'dir, 'ig> {
-
     /// The internal iterator over the paths that have been read already.
-    inner: SliceIter<'dir, PathBuf>,
+    inner: std::iter::Zip<std::slice::Iter<'dir, PathBuf>, std::vec::IntoIter<
+        (Result<fs::Metadata, Arc<io::Error>>, Option<Result<fs::Metadata, Arc<io::Error>>>)>>,
 
     /// The directory that begat those paths.
     dir: &'dir Dir,
@@ -84,7 +119,7 @@ pub struct Files<'dir, 'ig> {
 
     /// Whether the `.` or `..` directories should be produced first, before
     /// any files have been listed.
-    dots: DotsNext,
+    dots: Dots,
 
     ignore: Option<&'ig IgnoreCache>,
 }
@@ -103,19 +138,31 @@ impl<'dir, 'ig> Files<'dir, 'ig> {
     /// varies depending on the dotfile visibility flag)
     fn next_visible_file(&mut self) -> Option<Result<File<'dir>, (PathBuf, io::Error)>> {
         loop {
-            if let Some(path) = self.inner.next() {
-                let filename = File::filename(path);
-                if !self.dotfiles && filename.starts_with('.') { continue }
+            if let Some((path, (metadata, target_metadata))) = self.inner.next() {
+                let filename = File::filename(&path);
+                if !self.dotfiles && filename.starts_with('.') { continue; }
 
                 if let Some(i) = self.ignore {
-                    if i.is_ignored(path) { continue }
+                    if i.is_ignored(&path) { continue; }
                 }
 
-                return Some(File::from_args(path.clone(), self.dir, filename)
-                                 .map_err(|e| (path.clone(), e)))
-            }
-            else {
-                return None
+                let target_metadata = target_metadata.map(|m| m.map_err(|e| Arc::try_unwrap(e).unwrap()));
+
+                return Some(metadata.map(|meta|
+                    File {
+                        name: filename,
+                        ext: File::ext(path),
+                        path: path.to_path_buf(),
+                        metadata: meta,
+                        parent_dir: Some(self.dir),
+                        target_metadata: target_metadata,
+                        is_all_all: false,
+                    }
+                ).map_err(|e| {
+                    (path.clone(), Arc::try_unwrap(e).unwrap())
+                }));
+            } else {
+                return None;
             }
         }
     }
@@ -123,16 +170,15 @@ impl<'dir, 'ig> Files<'dir, 'ig> {
 
 /// The dot directories that need to be listed before actual files, if any.
 /// If these aren’t being printed, then `FilesNext` is used to skip them.
-enum DotsNext {
-
+enum Dots {
     /// List the `.` directory next.
-    Dot,
+    DotNext,
 
     /// List the `..` directory next.
-    DotDot,
+    DotDotNext,
 
     /// Forget about the dot directories and just list files.
-    Files,
+    FilesNext,
 }
 
 
@@ -140,20 +186,16 @@ impl<'dir, 'ig> Iterator for Files<'dir, 'ig> {
     type Item = Result<File<'dir>, (PathBuf, io::Error)>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.dots {
-            DotsNext::Dot => {
-                self.dots = DotsNext::DotDot;
-                Some(File::new_aa_current(self.dir)
-                          .map_err(|e| (Path::new(".").to_path_buf(), e)))
-            },
-            DotsNext::DotDot => {
-                self.dots = DotsNext::Files;
-                Some(File::new_aa_parent(self.parent(), self.dir)
-                          .map_err(|e| (self.parent(), e)))
-            },
-            DotsNext::Files => {
-                self.next_visible_file()
-            },
+        if let Dots::DotNext = self.dots {
+            self.dots = Dots::DotDotNext;
+            Some(File::from_args(self.dir.path.to_path_buf(), self.dir, String::from("."))
+                .map_err(|e| (Path::new(".").to_path_buf(), e)))
+        } else if let Dots::DotDotNext = self.dots {
+            self.dots = Dots::FilesNext;
+            Some(File::from_args(self.parent(), self.dir, String::from(".."))
+                .map_err(|e| (self.parent(), e)))
+        } else {
+            self.next_visible_file()
         }
     }
 }
@@ -164,7 +206,6 @@ impl<'dir, 'ig> Iterator for Files<'dir, 'ig> {
 /// visible after an extra `-a` option.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum DotFilter {
-
     /// Shows files, dotfiles, and `.` and `..`.
     DotfilesAndDots,
 
@@ -182,22 +223,21 @@ impl Default for DotFilter {
 }
 
 impl DotFilter {
-
     /// Whether this filter should show dotfiles in a listing.
     fn shows_dotfiles(self) -> bool {
         match self {
-            DotFilter::JustFiles       => false,
-            DotFilter::Dotfiles        => true,
+            DotFilter::JustFiles => false,
+            DotFilter::Dotfiles => true,
             DotFilter::DotfilesAndDots => true,
         }
     }
 
     /// Whether this filter should add dot directories to a listing.
-    fn dots(self) -> DotsNext {
+    fn dots(self) -> Dots {
         match self {
-            DotFilter::JustFiles       => DotsNext::Files,
-            DotFilter::Dotfiles        => DotsNext::Files,
-            DotFilter::DotfilesAndDots => DotsNext::Dot,
+            DotFilter::JustFiles => Dots::FilesNext,
+            DotFilter::Dotfiles => Dots::FilesNext,
+            DotFilter::DotfilesAndDots => Dots::DotNext,
         }
     }
 }
