@@ -12,13 +12,12 @@ use log::debug;
 
 use users::UsersCache;
 
-use crate::style::Colours;
+use crate::fs::feature::git::GitCache;
+use crate::fs::{fields as f, File};
 use crate::output::cell::TextCell;
 use crate::output::render::TimeRender;
 use crate::output::time::TimeFormat;
-use crate::fs::{File, fields as f};
-use crate::fs::feature::git::GitCache;
-
+use crate::style::Colours;
 
 /// Options for displaying a table.
 pub struct Options {
@@ -39,7 +38,6 @@ impl fmt::Debug for Options {
 /// Extra columns to display in the table.
 #[derive(PartialEq, Debug)]
 pub struct Columns {
-
     /// At least one of these timestamps will be shown.
     pub time_types: TimeTypes,
 
@@ -104,14 +102,13 @@ impl Columns {
             columns.push(Column::Timestamp(TimeType::Accessed));
         }
 
-        if cfg!(feature="git") && self.git && actually_enable_git {
+        if cfg!(feature = "git") && self.git && actually_enable_git {
             columns.push(Column::GitStatus);
         }
 
         columns
     }
 }
-
 
 /// A table contains these.
 #[derive(Debug)]
@@ -131,11 +128,11 @@ pub enum Column {
 /// right-aligned, and text is left-aligned.
 #[derive(Copy, Clone)]
 pub enum Alignment {
-    Left, Right,
+    Left,
+    Right,
 }
 
 impl Column {
-
     /// Get the alignment this column should use.
     pub fn alignment(&self) -> Alignment {
         match *self {
@@ -144,7 +141,7 @@ impl Column {
             | Column::Inode
             | Column::Blocks
             | Column::GitStatus => Alignment::Right,
-            _                   => Alignment::Left,
+            _ => Alignment::Left,
         }
     }
 
@@ -152,24 +149,22 @@ impl Column {
     /// to have a header row printed.
     pub fn header(&self) -> &'static str {
         match *self {
-            Column::Permissions   => "Permissions",
-            Column::FileSize      => "Size",
-            Column::Timestamp(t)  => t.header(),
-            Column::Blocks        => "Blocks",
-            Column::User          => "User",
-            Column::Group         => "Group",
-            Column::HardLinks     => "Links",
-            Column::Inode         => "inode",
-            Column::GitStatus     => "Git",
+            Column::Permissions => "Permissions",
+            Column::FileSize => "Size",
+            Column::Timestamp(t) => t.header(),
+            Column::Blocks => "Blocks",
+            Column::User => "User",
+            Column::Group => "Group",
+            Column::HardLinks => "Links",
+            Column::Inode => "inode",
+            Column::GitStatus => "Git",
         }
     }
 }
 
-
 /// Formatting options for file sizes.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum SizeFormat {
-
     /// Format the file size using **decimal** prefixes, such as “kilo”,
     /// “mega”, or “giga”.
     DecimalBytes,
@@ -187,7 +182,6 @@ impl Default for SizeFormat {
         SizeFormat::DecimalBytes
     }
 }
-
 
 /// The types of a file’s time fields. These three fields are standard
 /// across most (all?) operating systems.
@@ -207,18 +201,16 @@ pub enum TimeType {
 }
 
 impl TimeType {
-
     /// Returns the text to use for a column’s heading in the columns output.
     pub fn header(self) -> &'static str {
         match self {
-            TimeType::Modified  => "Date Modified",
-            TimeType::Changed   => "Date Changed",
-            TimeType::Accessed  => "Date Accessed",
-            TimeType::Created   => "Date Created",
+            TimeType::Modified => "Date Modified",
+            TimeType::Changed => "Date Changed",
+            TimeType::Accessed => "Date Accessed",
+            TimeType::Created => "Date Created",
         }
     }
 }
-
 
 /// Fields for which of a file’s time fields should be displayed in the
 /// columns output.
@@ -228,29 +220,29 @@ impl TimeType {
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub struct TimeTypes {
     pub modified: bool,
-    pub changed:  bool,
+    pub changed: bool,
     pub accessed: bool,
-    pub created:  bool,
+    pub created: bool,
 }
 
 impl Default for TimeTypes {
-
     /// By default, display just the ‘modified’ time. This is the most
     /// common option, which is why it has this shorthand.
     fn default() -> TimeTypes {
-        TimeTypes { modified: true, changed: false, accessed: false, created: false }
+        TimeTypes {
+            modified: true,
+            changed: false,
+            accessed: false,
+            created: false,
+        }
     }
 }
-
-
-
 
 /// The **environment** struct contains any data that could change between
 /// running instances of exa, depending on the user's computer's configuration.
 ///
 /// Any environment field should be able to be mocked up for test runs.
 pub struct Environment {
-
     /// Localisation rules for formatting numbers.
     numeric: locale::Numeric,
 
@@ -276,8 +268,8 @@ impl Environment {
             }
         };
 
-        let numeric = locale::Numeric::load_user_locale()
-                          .unwrap_or_else(|_| locale::Numeric::english());
+        let numeric =
+            locale::Numeric::load_user_locale().unwrap_or_else(|_| locale::Numeric::english());
 
         let users = Mutex::new(UsersCache::new());
 
@@ -288,7 +280,6 @@ impl Environment {
 fn determine_time_zone() -> TZResult<TimeZone> {
     TimeZone::from_file("/etc/localtime")
 }
-
 
 pub struct Table<'a> {
     columns: Vec<Column>,
@@ -311,10 +302,13 @@ impl<'a, 'f> Table<'a> {
         let widths = TableWidths::zero(columns.len());
 
         Table {
-            colours, widths, columns, git,
-            env:         &options.env,
+            colours,
+            widths,
+            columns,
+            git,
+            env: &options.env,
             time_format: &options.time_format,
-            size_format:  options.size_format,
+            size_format: options.size_format,
         }
     }
 
@@ -323,17 +317,21 @@ impl<'a, 'f> Table<'a> {
     }
 
     pub fn header_row(&self) -> Row {
-        let cells = self.columns.iter()
-                        .map(|c| TextCell::paint_str(self.colours.header, c.header()))
-                        .collect();
+        let cells = self
+            .columns
+            .iter()
+            .map(|c| TextCell::paint_str(self.colours.header, c.header()))
+            .collect();
 
         Row { cells }
     }
 
     pub fn row_for_file(&self, file: &File, xattrs: bool) -> Row {
-        let cells = self.columns.iter()
-                        .map(|c| self.display(file, c, xattrs))
-                        .collect();
+        let cells = self
+            .columns
+            .iter()
+            .map(|c| self.display(file, c, xattrs))
+            .collect();
 
         Row { cells }
     }
@@ -354,19 +352,34 @@ impl<'a, 'f> Table<'a> {
         use crate::output::table::TimeType::*;
 
         match *column {
-            Column::Permissions    => self.permissions_plus(file, xattrs).render(self.colours),
-            Column::FileSize       => file.size().render(self.colours, self.size_format, &self.env.numeric),
-            Column::HardLinks      => file.links().render(self.colours, &self.env.numeric),
-            Column::Inode          => file.inode().render(self.colours.inode),
-            Column::Blocks         => file.blocks().render(self.colours),
-            Column::User           => file.user().render(self.colours, &*self.env.lock_users()),
-            Column::Group          => file.group().render(self.colours, &*self.env.lock_users()),
-            Column::GitStatus      => self.git_status(file).render(self.colours),
+            Column::Permissions => self.permissions_plus(file, xattrs).render(self.colours),
+            Column::FileSize => {
+                file.size()
+                    .render(self.colours, self.size_format, &self.env.numeric)
+            }
+            Column::HardLinks => file.links().render(self.colours, &self.env.numeric),
+            Column::Inode => file.inode().render(self.colours.inode),
+            Column::Blocks => file.blocks().render(self.colours),
+            Column::User => file.user().render(self.colours, &*self.env.lock_users()),
+            Column::Group => file.group().render(self.colours, &*self.env.lock_users()),
+            Column::GitStatus => self.git_status(file).render(self.colours),
 
-            Column::Timestamp(Modified)  => file.modified_time().render(self.colours.date, &self.env.tz, &self.time_format),
-            Column::Timestamp(Changed)   => file.changed_time() .render(self.colours.date, &self.env.tz, &self.time_format),
-            Column::Timestamp(Created)   => file.created_time() .render(self.colours.date, &self.env.tz, &self.time_format),
-            Column::Timestamp(Accessed)  => file.accessed_time().render(self.colours.date, &self.env.tz, &self.time_format),
+            Column::Timestamp(Modified) => {
+                file.modified_time()
+                    .render(self.colours.date, &self.env.tz, &self.time_format)
+            }
+            Column::Timestamp(Changed) => {
+                file.changed_time()
+                    .render(self.colours.date, &self.env.tz, &self.time_format)
+            }
+            Column::Timestamp(Created) => {
+                file.created_time()
+                    .render(self.colours.date, &self.env.tz, &self.time_format)
+            }
+            Column::Timestamp(Accessed) => {
+                file.accessed_time()
+                    .render(self.colours.date, &self.env.tz, &self.time_format)
+            }
         }
     }
 
@@ -384,8 +397,14 @@ impl<'a, 'f> Table<'a> {
             let padding = width - *this_cell.width;
 
             match self.columns[n].alignment() {
-                Alignment::Left  => { cell.append(this_cell); cell.add_spaces(padding); }
-                Alignment::Right => { cell.add_spaces(padding); cell.append(this_cell); }
+                Alignment::Left => {
+                    cell.append(this_cell);
+                    cell.add_spaces(padding);
+                }
+                Alignment::Right => {
+                    cell.add_spaces(padding);
+                    cell.append(this_cell);
+                }
             }
 
             cell.add_spaces(1);
@@ -394,8 +413,6 @@ impl<'a, 'f> Table<'a> {
         cell
     }
 }
-
-
 
 pub struct TableWidths(Vec<usize>);
 
@@ -409,7 +426,7 @@ impl Deref for TableWidths {
 
 impl TableWidths {
     pub fn zero(count: usize) -> TableWidths {
-        TableWidths(vec![ 0; count ])
+        TableWidths(vec![0; count])
     }
 
     pub fn add_widths(&mut self, row: &Row) {

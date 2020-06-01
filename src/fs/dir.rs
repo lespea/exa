@@ -1,7 +1,7 @@
 use crate::fs::feature::git::GitCache;
 use crate::fs::fields::GitStatus;
-use std::io::{self, Result as IOResult};
 use std::fs;
+use std::io::{self, Result as IOResult};
 use std::path::{Path, PathBuf};
 
 use std::sync::Arc;
@@ -11,7 +11,6 @@ use scoped_threadpool::Pool;
 use log::info;
 
 use crate::fs::File;
-
 
 /// A **Dir** provides a cached list of the file paths in a directory that's
 /// being listed.
@@ -48,7 +47,12 @@ impl Dir {
 
     /// Produce an iterator of IO results of trying to read all the files in
     /// this directory.
-    pub fn files<'dir, 'ig>(&'dir self, dots: DotFilter, git: Option<&'ig GitCache>, pool: Option<&mut Pool>) -> Files<'dir, 'ig> {
+    pub fn files<'dir, 'ig>(
+        &'dir self,
+        dots: DotFilter,
+        git: Option<&'ig GitCache>,
+        pool: Option<&mut Pool>,
+    ) -> Files<'dir, 'ig> {
         // File::new calls std::fs::File::metadata, which on linux calls lstat. On some
         // filesystems this can be very slow, but there's no async filesystem API
         // so all we can do to hide the latency is use system threads.
@@ -56,11 +60,19 @@ impl Dir {
         if let Some(pool) = pool {
             let chunksize = (self.contents.len() / pool.thread_count() as usize).max(1);
             pool.scoped(|scoped| {
-                for (path_chunk, meta_chunk) in self.contents.chunks(chunksize).zip(metadata.chunks_mut(chunksize)) {
+                for (path_chunk, meta_chunk) in self
+                    .contents
+                    .chunks(chunksize)
+                    .zip(metadata.chunks_mut(chunksize))
+                {
                     scoped.execute(move || {
                         for (path, e) in path_chunk.iter().zip(meta_chunk.iter_mut()) {
                             let meta = fs::symlink_metadata(path).map_err(Arc::new);
-                            let link_target = if meta.as_ref().map(|m| m.file_type().is_symlink()).unwrap_or(false) {
+                            let link_target = if meta
+                                .as_ref()
+                                .map(|m| m.file_type().is_symlink())
+                                .unwrap_or(false)
+                            {
                                 Some(fs::metadata(path).map_err(Arc::new))
                             } else {
                                 None
@@ -73,7 +85,11 @@ impl Dir {
         } else {
             for (path, e) in self.contents.iter().zip(metadata.iter_mut()) {
                 let meta = fs::symlink_metadata(path).map_err(Arc::new);
-                let link_target = if meta.as_ref().map(|m| m.file_type().is_symlink()).unwrap_or(false) {
+                let link_target = if meta
+                    .as_ref()
+                    .map(|m| m.file_type().is_symlink())
+                    .unwrap_or(false)
+                {
                     Some(fs::metadata(path).map_err(Arc::new))
                 } else {
                     None
@@ -103,12 +119,16 @@ impl Dir {
     }
 }
 
-
 /// Iterator over reading the contents of a directory as `File` objects.
 pub struct Files<'dir, 'ig> {
     /// The internal iterator over the paths that have been read already.
-    inner: std::iter::Zip<std::slice::Iter<'dir, PathBuf>, std::vec::IntoIter<
-        (Result<fs::Metadata, Arc<io::Error>>, Option<Result<fs::Metadata, Arc<io::Error>>>)>>,
+    inner: std::iter::Zip<
+        std::slice::Iter<'dir, PathBuf>,
+        std::vec::IntoIter<(
+            Result<fs::Metadata, Arc<io::Error>>,
+            Option<Result<fs::Metadata, Arc<io::Error>>>,
+        )>,
+    >,
 
     /// The directory that begat those paths.
     dir: &'dir Dir,
@@ -139,28 +159,31 @@ impl<'dir, 'ig> Files<'dir, 'ig> {
         loop {
             if let Some((path, (metadata, target_metadata))) = self.inner.next() {
                 let filename = File::filename(&path);
-                if !self.dotfiles && filename.starts_with('.') { continue; }
+                if !self.dotfiles && filename.starts_with('.') {
+                    continue;
+                }
 
                 let git_status = self.git.map(|g| g.get(path, false)).unwrap_or_default();
                 if git_status.unstaged == GitStatus::Ignored {
-                     continue;
+                    continue;
                 }
 
-                let target_metadata = target_metadata.map(|m| m.map_err(|e| Arc::try_unwrap(e).unwrap()));
+                let target_metadata =
+                    target_metadata.map(|m| m.map_err(|e| Arc::try_unwrap(e).unwrap()));
 
-                return Some(metadata.map(|meta|
-                    File {
-                        name: filename,
-                        ext: File::ext(path),
-                        path: path.to_path_buf(),
-                        metadata: meta,
-                        parent_dir: Some(self.dir),
-                        target_metadata: target_metadata,
-                        is_all_all: false,
-                    }
-                ).map_err(|e| {
-                    (path.clone(), Arc::try_unwrap(e).unwrap())
-                }));
+                return Some(
+                    metadata
+                        .map(|meta| File {
+                            name: filename,
+                            ext: File::ext(path),
+                            path: path.to_path_buf(),
+                            metadata: meta,
+                            parent_dir: Some(self.dir),
+                            target_metadata: target_metadata,
+                            is_all_all: false,
+                        })
+                        .map_err(|e| (path.clone(), Arc::try_unwrap(e).unwrap())),
+                );
             } else {
                 return None;
             }
@@ -181,25 +204,27 @@ enum Dots {
     FilesNext,
 }
 
-
 impl<'dir, 'ig> Iterator for Files<'dir, 'ig> {
     type Item = Result<File<'dir>, (PathBuf, io::Error)>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Dots::DotNext = self.dots {
             self.dots = Dots::DotDotNext;
-            Some(File::from_args(self.dir.path.to_path_buf(), self.dir, String::from("."))
-                .map_err(|e| (Path::new(".").to_path_buf(), e)))
+            Some(
+                File::from_args(self.dir.path.to_path_buf(), self.dir, String::from("."))
+                    .map_err(|e| (Path::new(".").to_path_buf(), e)),
+            )
         } else if let Dots::DotDotNext = self.dots {
             self.dots = Dots::FilesNext;
-            Some(File::from_args(self.parent(), self.dir, String::from(".."))
-                .map_err(|e| (self.parent(), e)))
+            Some(
+                File::from_args(self.parent(), self.dir, String::from(".."))
+                    .map_err(|e| (self.parent(), e)),
+            )
         } else {
             self.next_visible_file()
         }
     }
 }
-
 
 /// Usually files in Unix use a leading dot to be hidden or visible, but two
 /// entries in particular are "extra-hidden": `.` and `..`, which only become

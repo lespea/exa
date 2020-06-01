@@ -1,13 +1,12 @@
-use std::io::{Write, Result as IOResult};
+use std::io::{Result as IOResult, Write};
 
 use term_grid as tg;
 
 use crate::fs::File;
-use crate::style::Colours;
+use crate::output::cell::DisplayWidth;
 use crate::output::file_name::FileStyle;
 use crate::output::icons::painted_icon;
-use crate::output::cell::DisplayWidth;
-
+use crate::style::Colours;
 
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub struct Options {
@@ -18,11 +17,13 @@ pub struct Options {
 
 impl Options {
     pub fn direction(&self) -> tg::Direction {
-        if self.across { tg::Direction::LeftToRight }
-                  else { tg::Direction::TopToBottom }
+        if self.across {
+            tg::Direction::LeftToRight
+        } else {
+            tg::Direction::TopToBottom
+        }
     }
 }
-
 
 pub struct Render<'a> {
     pub files: Vec<File<'a>>,
@@ -34,14 +35,18 @@ pub struct Render<'a> {
 impl<'a> Render<'a> {
     pub fn render<W: Write>(&self, w: &mut W) -> IOResult<()> {
         let mut grid = tg::Grid::new(tg::GridOptions {
-            direction:  self.opts.direction(),
-            filling:    tg::Filling::Spaces(2),
+            direction: self.opts.direction(),
+            filling: tg::Filling::Spaces(2),
         });
 
         grid.reserve(self.files.len());
 
         for file in &self.files {
-            let icon = if self.opts.icons { Some(painted_icon(&file, &self.style)) } else { None };
+            let icon = if self.opts.icons {
+                Some(painted_icon(&file, &self.style))
+            } else {
+                None
+            };
             let filename = self.style.for_file(file, self.colours).paint();
             let width = if self.opts.icons {
                 DisplayWidth::from(2) + filename.width()
@@ -50,16 +55,19 @@ impl<'a> Render<'a> {
             };
 
             grid.add(tg::Cell {
-                contents:  format!("{icon}{filename}", icon=&icon.unwrap_or("".to_string()), filename=filename.strings().to_string()),
-                width:     *width,
+                contents: format!(
+                    "{icon}{filename}",
+                    icon = &icon.unwrap_or("".to_string()),
+                    filename = filename.strings().to_string()
+                ),
+                width: *width,
                 alignment: tg::Alignment::Left,
             });
         }
 
         if let Some(display) = grid.fit_into_width(self.opts.console_width) {
             write!(w, "{}", display)
-        }
-        else {
+        } else {
             // File names too long for a grid - drop down to just listing them!
             // This isn’t *quite* the same as the lines view, which also
             // displays full link paths.

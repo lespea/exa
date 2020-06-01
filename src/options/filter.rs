@@ -1,44 +1,41 @@
 //! Parsing the options for `FileFilter`.
 
+use crate::fs::filter::{FileFilter, GitIgnore, IgnorePatterns, SortCase, SortField};
 use crate::fs::DotFilter;
-use crate::fs::filter::{FileFilter, SortField, SortCase, IgnorePatterns, GitIgnore};
 
-use crate::options::{flags, Misfire};
 use crate::options::parser::MatchedFlags;
-
+use crate::options::{flags, Misfire};
 
 impl FileFilter {
-
     /// Determines which of all the file filter options to use.
     pub fn deduce(matches: &MatchedFlags) -> Result<FileFilter, Misfire> {
         Ok(FileFilter {
             list_dirs_first: matches.has(&flags::DIRS_FIRST)?,
-            reverse:         matches.has(&flags::REVERSE)?,
-            only_dirs:       matches.has(&flags::ONLY_DIRS)?,
-            sort_field:      SortField::deduce(matches)?,
-            dot_filter:      DotFilter::deduce(matches)?,
+            reverse: matches.has(&flags::REVERSE)?,
+            only_dirs: matches.has(&flags::ONLY_DIRS)?,
+            sort_field: SortField::deduce(matches)?,
+            dot_filter: DotFilter::deduce(matches)?,
             ignore_patterns: IgnorePatterns::deduce(matches)?,
-            git_ignore:      GitIgnore::deduce(matches)?,
+            git_ignore: GitIgnore::deduce(matches)?,
         })
     }
 }
 
 impl SortField {
-
     /// Determines which sort field to use based on the `--sort` argument.
     /// This argument’s value can be one of several flags, listed above.
     /// Returns the default sort field if none is given, or `Err` if the
     /// value doesn’t correspond to a sort field we know about.
     fn deduce(matches: &MatchedFlags) -> Result<SortField, Misfire> {
         let word = match matches.get(&flags::SORT)? {
-            Some(w)  => w,
-            None     => return Ok(SortField::default()),
+            Some(w) => w,
+            None => return Ok(SortField::default()),
         };
 
         // Get String because we can’t match an OsStr
         let word = match word.to_str() {
             Some(ref w) => *w,
-            None => return Err(Misfire::BadArgument(&flags::SORT, word.into()))
+            None => return Err(Misfire::BadArgument(&flags::SORT, word.into())),
         };
 
         let field = match word {
@@ -64,13 +61,12 @@ impl SortField {
             "inode" => SortField::FileInode,
             "type" => SortField::FileType,
             "none" => SortField::Unsorted,
-            _ => return Err(Misfire::BadArgument(&flags::SORT, word.into()))
+            _ => return Err(Misfire::BadArgument(&flags::SORT, word.into())),
         };
 
         Ok(field)
     }
 }
-
 
 // I’ve gone back and forth between whether to sort case-sensitively or
 // insensitively by default. The default string sort in most programming
@@ -110,9 +106,7 @@ impl Default for SortField {
     }
 }
 
-
 impl DotFilter {
-
     /// Determines the dot filter based on how many `--all` options were
     /// given: one will show dotfiles, but two will show `.` and `..` too.
     ///
@@ -124,30 +118,23 @@ impl DotFilter {
 
         if count == 0 {
             Ok(DotFilter::JustFiles)
-        }
-        else if count == 1 {
+        } else if count == 1 {
             Ok(DotFilter::Dotfiles)
-        }
-        else if matches.count(&flags::TREE) > 0 {
+        } else if matches.count(&flags::TREE) > 0 {
             Err(Misfire::TreeAllAll)
-        }
-        else if count >= 3 && matches.is_strict() {
+        } else if count >= 3 && matches.is_strict() {
             Err(Misfire::Conflict(&flags::ALL, &flags::ALL))
-        }
-        else {
+        } else {
             Ok(DotFilter::DotfilesAndDots)
         }
     }
 }
 
-
 impl IgnorePatterns {
-
     /// Determines the set of glob patterns to use based on the
     /// `--ignore-patterns` argument’s value. This is a list of strings
     /// separated by pipe (`|`) characters, given in any order.
     pub fn deduce(matches: &MatchedFlags) -> Result<IgnorePatterns, Misfire> {
-
         // If there are no inputs, we return a set of patterns that doesn’t
         // match anything, rather than, say, `None`.
         let inputs = match matches.get(&flags::IGNORE_GLOB)? {
@@ -157,33 +144,34 @@ impl IgnorePatterns {
 
         // Awkwardly, though, a glob pattern can be invalid, and we need to
         // deal with invalid patterns somehow.
-        let (patterns, mut errors) = IgnorePatterns::parse_from_iter(inputs.to_string_lossy().split('|'));
+        let (patterns, mut errors) =
+            IgnorePatterns::parse_from_iter(inputs.to_string_lossy().split('|'));
 
         // It can actually return more than one glob error,
         // but we only use one. (TODO)
         match errors.pop() {
             Some(e) => Err(e.into()),
-            None    => Ok(patterns),
+            None => Ok(patterns),
         }
     }
 }
 
-
 impl GitIgnore {
     pub fn deduce(matches: &MatchedFlags) -> Result<Self, Misfire> {
-        Ok(if matches.has(&flags::GIT_IGNORE)? { GitIgnore::CheckAndIgnore }
-                                          else { GitIgnore::Off })
+        Ok(if matches.has(&flags::GIT_IGNORE)? {
+            GitIgnore::CheckAndIgnore
+        } else {
+            GitIgnore::Off
+        })
     }
 }
-
-
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::ffi::OsString;
     use crate::options::flags;
     use crate::options::parser::Flag;
+    use std::ffi::OsString;
 
     macro_rules! test {
         ($name:ident: $type:ident <- $inputs:expr; $stricts:expr => $result:expr) => {
@@ -193,8 +181,16 @@ mod test {
                 use crate::options::test::parse_for_test;
                 use crate::options::test::Strictnesses::*;
 
-                static TEST_ARGS: &[&Arg] = &[ &flags::SORT, &flags::ALL, &flags::TREE, &flags::IGNORE_GLOB, &flags::GIT_IGNORE ];
-                for result in parse_for_test($inputs.as_ref(), TEST_ARGS, $stricts, |mf| $type::deduce(mf)) {
+                static TEST_ARGS: &[&Arg] = &[
+                    &flags::SORT,
+                    &flags::ALL,
+                    &flags::TREE,
+                    &flags::IGNORE_GLOB,
+                    &flags::GIT_IGNORE,
+                ];
+                for result in parse_for_test($inputs.as_ref(), TEST_ARGS, $stricts, |mf| {
+                    $type::deduce(mf)
+                }) {
                     assert_eq!(result, $result);
                 }
             }
@@ -232,7 +228,6 @@ mod test {
         test!(overridden_4:  SortField <- ["--sort", "none",  "--sort=Extension"];  Complain => Err(Misfire::Duplicate(Flag::Long("sort"), Flag::Long("sort"))));
     }
 
-
     mod dot_filters {
         use super::*;
 
@@ -253,11 +248,10 @@ mod test {
         test!(tree_aaa:   DotFilter <- ["-Taaa"];        Both => Err(Misfire::TreeAllAll));
     }
 
-
     mod ignore_patterns {
         use super::*;
-        use std::iter::FromIterator;
         use glob;
+        use std::iter::FromIterator;
 
         fn pat(string: &'static str) -> glob::Pattern {
             glob::Pattern::new(string).unwrap()
@@ -275,7 +269,6 @@ mod test {
         test!(overridden_3: IgnorePatterns <- ["-I=*.ogg",    "-I", "*.mp3"];  Complain => Err(Misfire::Duplicate(Flag::Short(b'I'), Flag::Short(b'I'))));
         test!(overridden_4: IgnorePatterns <- ["-I", "*.OGG", "-I*.MP3"];      Complain => Err(Misfire::Duplicate(Flag::Short(b'I'), Flag::Short(b'I'))));
     }
-
 
     mod git_ignores {
         use super::*;

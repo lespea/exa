@@ -1,30 +1,30 @@
 use lazy_static::lazy_static;
 
-use crate::options::{flags, Misfire, Vars};
 use crate::options::parser::MatchedFlags;
-use crate::output::{View, Mode, grid, details, lines};
+use crate::options::{flags, Misfire, Vars};
 use crate::output::grid_details::{self, RowThreshold};
-use crate::output::table::{TimeTypes, Environment, SizeFormat, Columns, Options as TableOptions};
+use crate::output::table::{Columns, Environment, Options as TableOptions, SizeFormat, TimeTypes};
 use crate::output::time::TimeFormat;
+use crate::output::{details, grid, lines, Mode, View};
 
 use crate::fs::feature::xattr;
 
-
 impl View {
-
     /// Determine which view to use and all of that view’s arguments.
     pub fn deduce<V: Vars>(matches: &MatchedFlags, vars: &V) -> Result<View, Misfire> {
         use crate::options::style::Styles;
 
         let mode = Mode::deduce(matches, vars)?;
         let Styles { colours, style } = Styles::deduce(matches, vars, || *TERM_WIDTH)?;
-        Ok(View { mode, colours, style })
+        Ok(View {
+            mode,
+            colours,
+            style,
+        })
     }
 }
 
-
 impl Mode {
-
     /// Determine the mode from the command-line arguments.
     pub fn deduce<V: Vars>(matches: &MatchedFlags, vars: &V) -> Result<Mode, Misfire> {
         use crate::options::misfire::Misfire::*;
@@ -32,11 +32,9 @@ impl Mode {
         let long = || {
             if matches.has(&flags::ACROSS)? && !matches.has(&flags::GRID)? {
                 Err(Useless(&flags::ACROSS, true, &flags::LONG))
-            }
-            else if matches.has(&flags::ONE_LINE)? {
+            } else if matches.has(&flags::ONE_LINE)? {
                 Err(Useless(&flags::ONE_LINE, true, &flags::LONG))
-            }
-            else {
+            } else {
                 Ok(details::Options {
                     table: Some(TableOptions::deduce(matches, vars)?),
                     header: matches.has(&flags::HEADER)?,
@@ -51,13 +49,13 @@ impl Mode {
                 if matches.has(&flags::ONE_LINE)? {
                     if matches.has(&flags::ACROSS)? {
                         Err(Useless(&flags::ACROSS, true, &flags::ONE_LINE))
-                    }
-                    else {
-                        let lines = lines::Options { icons: matches.has(&flags::ICONS)? };
+                    } else {
+                        let lines = lines::Options {
+                            icons: matches.has(&flags::ICONS)?,
+                        };
                         Ok(Mode::Lines(lines))
                     }
-                }
-                else if matches.has(&flags::TREE)? {
+                } else if matches.has(&flags::TREE)? {
                     let details = details::Options {
                         table: None,
                         header: false,
@@ -66,8 +64,7 @@ impl Mode {
                     };
 
                     Ok(Mode::Details(details))
-                }
-                else {
+                } else {
                     let grid = grid::Options {
                         across: matches.has(&flags::ACROSS)?,
                         console_width: width,
@@ -77,7 +74,6 @@ impl Mode {
                     Ok(Mode::Grid(grid))
                 }
             }
-
             // If the terminal width couldn’t be matched for some reason, such
             // as the program’s stdout being connected to a file, then
             // fallback to the lines or details view.
@@ -90,12 +86,13 @@ impl Mode {
                 };
 
                 Ok(Mode::Details(details))
-            }
-            else if matches.has(&flags::LONG)? {
+            } else if matches.has(&flags::LONG)? {
                 let details = long()?;
                 Ok(Mode::Details(details))
             } else {
-                let lines = lines::Options { icons: matches.has(&flags::ICONS)?, };
+                let lines = lines::Options {
+                    icons: matches.has(&flags::ICONS)?,
+                };
                 Ok(Mode::Lines(lines))
             }
         };
@@ -106,13 +103,15 @@ impl Mode {
                 let other_options_mode = other_options_scan()?;
                 if let Mode::Grid(grid) = other_options_mode {
                     let row_threshold = RowThreshold::deduce(vars)?;
-                    return Ok(Mode::GridDetails(grid_details::Options { grid, details, row_threshold }));
-                }
-                else {
+                    return Ok(Mode::GridDetails(grid_details::Options {
+                        grid,
+                        details,
+                        row_threshold,
+                    }));
+                } else {
                     return Ok(other_options_mode);
                 }
-            }
-            else {
+            } else {
                 return Ok(Mode::Details(details));
             }
         }
@@ -120,17 +119,27 @@ impl Mode {
         // If --long hasn’t been passed, then check if we need to warn the
         // user about flags that won’t have any effect.
         if matches.is_strict() {
-            for option in &[ &flags::BINARY, &flags::BYTES, &flags::INODE, &flags::LINKS,
-                             &flags::HEADER, &flags::BLOCKS, &flags::TIME, &flags::GROUP ] {
+            for option in &[
+                &flags::BINARY,
+                &flags::BYTES,
+                &flags::INODE,
+                &flags::LINKS,
+                &flags::HEADER,
+                &flags::BLOCKS,
+                &flags::TIME,
+                &flags::GROUP,
+            ] {
                 if matches.has(option)? {
                     return Err(Useless(*option, false, &flags::LONG));
                 }
             }
 
-            if cfg!(feature="git") && matches.has(&flags::GIT)? {
+            if cfg!(feature = "git") && matches.has(&flags::GIT)? {
                 return Err(Useless(&flags::GIT, false, &flags::LONG));
-            }
-            else if matches.has(&flags::LEVEL)? && !matches.has(&flags::RECURSE)? && !matches.has(&flags::TREE)? {
+            } else if matches.has(&flags::LEVEL)?
+                && !matches.has(&flags::RECURSE)?
+                && !matches.has(&flags::TREE)?
+            {
                 // TODO: I'm not sure if the code even gets this far.
                 // There is an identical check in dir_action
                 return Err(Useless2(&flags::LEVEL, &flags::RECURSE, &flags::TREE));
@@ -141,11 +150,9 @@ impl Mode {
     }
 }
 
-
 /// The width of the terminal requested by the user.
 #[derive(PartialEq, Debug)]
 enum TerminalWidth {
-
     /// The user requested this specific number of columns.
     Set(usize),
 
@@ -157,7 +164,6 @@ enum TerminalWidth {
 }
 
 impl TerminalWidth {
-
     /// Determine a requested terminal width from the command-line arguments.
     ///
     /// Returns an error if a requested width doesn’t parse to an integer.
@@ -166,47 +172,43 @@ impl TerminalWidth {
 
         if let Some(columns) = vars.get(vars::COLUMNS).and_then(|s| s.into_string().ok()) {
             match columns.parse() {
-                Ok(width)  => Ok(TerminalWidth::Set(width)),
-                Err(e)     => Err(Misfire::FailedParse(e)),
+                Ok(width) => Ok(TerminalWidth::Set(width)),
+                Err(e) => Err(Misfire::FailedParse(e)),
             }
-        }
-        else if let Some(width) = *TERM_WIDTH {
+        } else if let Some(width) = *TERM_WIDTH {
             Ok(TerminalWidth::Terminal(width))
-        }
-        else {
+        } else {
             Ok(TerminalWidth::Unset)
         }
     }
 
     fn width(&self) -> Option<usize> {
         match *self {
-            TerminalWidth::Set(width)       |
-            TerminalWidth::Terminal(width)  => Some(width),
-            TerminalWidth::Unset            => None,
+            TerminalWidth::Set(width) | TerminalWidth::Terminal(width) => Some(width),
+            TerminalWidth::Unset => None,
         }
     }
 }
 
-
 impl RowThreshold {
-
     /// Determine whether to use a row threshold based on the given
     /// environment variables.
     fn deduce<V: Vars>(vars: &V) -> Result<RowThreshold, Misfire> {
         use crate::options::vars;
 
-        if let Some(columns) = vars.get(vars::EXA_GRID_ROWS).and_then(|s| s.into_string().ok()) {
+        if let Some(columns) = vars
+            .get(vars::EXA_GRID_ROWS)
+            .and_then(|s| s.into_string().ok())
+        {
             match columns.parse() {
-                Ok(rows)  => Ok(RowThreshold::MinimumRows(rows)),
-                Err(e)    => Err(Misfire::FailedParse(e)),
+                Ok(rows) => Ok(RowThreshold::MinimumRows(rows)),
+                Err(e) => Err(Misfire::FailedParse(e)),
             }
-        }
-        else {
+        } else {
             Ok(RowThreshold::AlwaysGrid)
         }
     }
 }
-
 
 impl TableOptions {
     fn deduce<V: Vars>(matches: &MatchedFlags, vars: &V) -> Result<Self, Misfire> {
@@ -214,32 +216,44 @@ impl TableOptions {
         let time_format = TimeFormat::deduce(matches, vars)?;
         let size_format = SizeFormat::deduce(matches)?;
         let columns = Columns::deduce(matches)?;
-        Ok(TableOptions { env, time_format, size_format, columns })
+        Ok(TableOptions {
+            env,
+            time_format,
+            size_format,
+            columns,
+        })
     }
 }
-
 
 impl Columns {
     fn deduce(matches: &MatchedFlags) -> Result<Self, Misfire> {
         let time_types = TimeTypes::deduce(matches)?;
-        let git = cfg!(feature="git") && matches.has(&flags::GIT)?;
+        let git = cfg!(feature = "git") && matches.has(&flags::GIT)?;
 
         let blocks = matches.has(&flags::BLOCKS)?;
-        let group  = matches.has(&flags::GROUP)?;
-        let inode  = matches.has(&flags::INODE)?;
-        let links  = matches.has(&flags::LINKS)?;
+        let group = matches.has(&flags::GROUP)?;
+        let inode = matches.has(&flags::INODE)?;
+        let links = matches.has(&flags::LINKS)?;
 
         let permissions = !matches.has(&flags::NO_PERMISSIONS)?;
-        let filesize =    !matches.has(&flags::NO_FILESIZE)?;
-        let user =        !matches.has(&flags::NO_USER)?;
+        let filesize = !matches.has(&flags::NO_FILESIZE)?;
+        let user = !matches.has(&flags::NO_USER)?;
 
-        Ok(Columns { time_types, git, blocks, group, inode, links, permissions, filesize, user })
+        Ok(Columns {
+            time_types,
+            git,
+            blocks,
+            group,
+            inode,
+            links,
+            permissions,
+            filesize,
+            user,
+        })
     }
 }
 
-
 impl SizeFormat {
-
     /// Determine which file size to use in the file size column based on
     /// the user’s options.
     ///
@@ -252,52 +266,44 @@ impl SizeFormat {
         let flag = matches.has_where(|f| f.matches(&flags::BINARY) || f.matches(&flags::BYTES))?;
 
         Ok(match flag {
-            Some(f) if f.matches(&flags::BINARY)  => SizeFormat::BinaryBytes,
-            Some(f) if f.matches(&flags::BYTES)   => SizeFormat::JustBytes,
-            _                                     => SizeFormat::DecimalBytes,
+            Some(f) if f.matches(&flags::BINARY) => SizeFormat::BinaryBytes,
+            Some(f) if f.matches(&flags::BYTES) => SizeFormat::JustBytes,
+            _ => SizeFormat::DecimalBytes,
         })
     }
 }
 
-
 impl TimeFormat {
-
     /// Determine how time should be formatted in timestamp columns.
     fn deduce<V: Vars>(matches: &MatchedFlags, vars: &V) -> Result<TimeFormat, Misfire> {
         pub use crate::output::time::{DefaultFormat, ISOFormat};
 
         let word = match matches.get(&flags::TIME_STYLE)? {
             Some(w) => w.to_os_string(),
-            None    => {
+            None => {
                 use crate::options::vars;
                 match vars.get(vars::TIME_STYLE) {
                     Some(ref t) if !t.is_empty() => t.clone(),
-                    _                            => return Ok(TimeFormat::DefaultFormat(DefaultFormat::load()))
+                    _ => return Ok(TimeFormat::DefaultFormat(DefaultFormat::load())),
                 }
-            },
+            }
         };
 
         if &word == "default" {
             Ok(TimeFormat::DefaultFormat(DefaultFormat::load()))
-        }
-        else if &word == "iso" {
+        } else if &word == "iso" {
             Ok(TimeFormat::ISOFormat(ISOFormat::load()))
-        }
-        else if &word == "long-iso" {
+        } else if &word == "long-iso" {
             Ok(TimeFormat::LongISO)
-        }
-        else if &word == "full-iso" {
+        } else if &word == "full-iso" {
             Ok(TimeFormat::FullISO)
-        }
-        else {
+        } else {
             Err(Misfire::BadArgument(&flags::TIME_STYLE, word.into()))
         }
     }
 }
 
-
 impl TimeTypes {
-
     /// Determine which of a file’s time fields should be displayed for it
     /// based on the user’s options.
     ///
@@ -311,54 +317,73 @@ impl TimeTypes {
     fn deduce(matches: &MatchedFlags) -> Result<TimeTypes, Misfire> {
         let possible_word = matches.get(&flags::TIME)?;
         let modified = matches.has(&flags::MODIFIED)?;
-        let changed  = matches.has(&flags::CHANGED)?;
+        let changed = matches.has(&flags::CHANGED)?;
         let accessed = matches.has(&flags::ACCESSED)?;
-        let created  = matches.has(&flags::CREATED)?;
+        let created = matches.has(&flags::CREATED)?;
 
         let no_time = matches.has(&flags::NO_TIME)?;
 
         let time_types = if no_time {
-            TimeTypes { modified: false, changed: false, accessed: false, created: false }
+            TimeTypes {
+                modified: false,
+                changed: false,
+                accessed: false,
+                created: false,
+            }
         } else if let Some(word) = possible_word {
             if modified {
                 return Err(Misfire::Useless(&flags::MODIFIED, true, &flags::TIME));
-            }
-            else if changed {
+            } else if changed {
                 return Err(Misfire::Useless(&flags::CHANGED, true, &flags::TIME));
-            }
-            else if accessed {
+            } else if accessed {
                 return Err(Misfire::Useless(&flags::ACCESSED, true, &flags::TIME));
-            }
-            else if created {
+            } else if created {
                 return Err(Misfire::Useless(&flags::CREATED, true, &flags::TIME));
-            }
-            else if word == "mod" || word == "modified" {
-                TimeTypes { modified: true,  changed: false, accessed: false, created: false }
-            }
-            else if word == "ch" || word == "changed" {
-                TimeTypes { modified: false, changed: true,  accessed: false, created: false }
-            }
-            else if word == "acc" || word == "accessed" {
-                TimeTypes { modified: false, changed: false, accessed: true,  created: false }
-            }
-            else if word == "cr" || word == "created" {
-                TimeTypes { modified: false, changed: false, accessed: false, created: true  }
-            }
-            else {
+            } else if word == "mod" || word == "modified" {
+                TimeTypes {
+                    modified: true,
+                    changed: false,
+                    accessed: false,
+                    created: false,
+                }
+            } else if word == "ch" || word == "changed" {
+                TimeTypes {
+                    modified: false,
+                    changed: true,
+                    accessed: false,
+                    created: false,
+                }
+            } else if word == "acc" || word == "accessed" {
+                TimeTypes {
+                    modified: false,
+                    changed: false,
+                    accessed: true,
+                    created: false,
+                }
+            } else if word == "cr" || word == "created" {
+                TimeTypes {
+                    modified: false,
+                    changed: false,
+                    accessed: false,
+                    created: true,
+                }
+            } else {
                 return Err(Misfire::BadArgument(&flags::TIME, word.into()));
             }
-        }
-        else if modified || changed || accessed || created {
-            TimeTypes { modified, changed, accessed, created }
-        }
-        else {
+        } else if modified || changed || accessed || created {
+            TimeTypes {
+                modified,
+                changed,
+                accessed,
+                created,
+            }
+        } else {
             TimeTypes::default()
         };
 
         Ok(time_types)
     }
 }
-
 
 // Gets, then caches, the width of the terminal that exa is running in.
 // This gets used multiple times above, with no real guarantee of order,
@@ -373,33 +398,48 @@ lazy_static! {
     };
 }
 
-
-
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::ffi::OsString;
     use crate::options::flags;
-    use crate::options::parser::{Flag, Arg};
+    use crate::options::parser::{Arg, Flag};
+    use std::ffi::OsString;
 
     use crate::options::test::parse_for_test;
     use crate::options::test::Strictnesses::*;
 
-    static TEST_ARGS: &[&Arg] = &[ &flags::BINARY, &flags::BYTES,    &flags::TIME_STYLE,
-                                   &flags::TIME,   &flags::MODIFIED, &flags::CHANGED,
-                                   &flags::CREATED, &flags::ACCESSED, &flags::ICONS,
-                                   &flags::HEADER, &flags::GROUP,  &flags::INODE, &flags::GIT,
-                                   &flags::LINKS,  &flags::BLOCKS, &flags::LONG,  &flags::LEVEL,
-                                   &flags::GRID,   &flags::ACROSS, &flags::ONE_LINE ];
+    static TEST_ARGS: &[&Arg] = &[
+        &flags::BINARY,
+        &flags::BYTES,
+        &flags::TIME_STYLE,
+        &flags::TIME,
+        &flags::MODIFIED,
+        &flags::CHANGED,
+        &flags::CREATED,
+        &flags::ACCESSED,
+        &flags::ICONS,
+        &flags::HEADER,
+        &flags::GROUP,
+        &flags::INODE,
+        &flags::GIT,
+        &flags::LINKS,
+        &flags::BLOCKS,
+        &flags::LONG,
+        &flags::LEVEL,
+        &flags::GRID,
+        &flags::ACROSS,
+        &flags::ONE_LINE,
+    ];
 
     macro_rules! test {
-
         ($name:ident: $type:ident <- $inputs:expr; $stricts:expr => $result:expr) => {
             /// Macro that writes a test.
             /// If testing both strictnesses, they’ll both be done in the same function.
             #[test]
             fn $name() {
-                for result in parse_for_test($inputs.as_ref(), TEST_ARGS, $stricts, |mf| $type::deduce(mf)) {
+                for result in parse_for_test($inputs.as_ref(), TEST_ARGS, $stricts, |mf| {
+                    $type::deduce(mf)
+                }) {
                     assert_eq!(result, $result);
                 }
             }
@@ -410,7 +450,9 @@ mod test {
             /// This is needed because sometimes the Ok type doesn’t implement PartialEq.
             #[test]
             fn $name() {
-                for result in parse_for_test($inputs.as_ref(), TEST_ARGS, $stricts, |mf| $type::deduce(mf)) {
+                for result in parse_for_test($inputs.as_ref(), TEST_ARGS, $stricts, |mf| {
+                    $type::deduce(mf)
+                }) {
                     assert_eq!(result.unwrap_err(), $result);
                 }
             }
@@ -421,22 +463,25 @@ mod test {
             /// Instead of using PartialEq, this just tests if it matches a pat.
             #[test]
             fn $name() {
-                for result in parse_for_test($inputs.as_ref(), TEST_ARGS, $stricts, |mf| $type::deduce(mf)) {
+                for result in parse_for_test($inputs.as_ref(), TEST_ARGS, $stricts, |mf| {
+                    $type::deduce(mf)
+                }) {
                     println!("Testing {:?}", result);
                     match result {
                         $pat => assert!(true),
-                        _    => assert!(false),
+                        _ => assert!(false),
                     }
                 }
             }
         };
 
-
         ($name:ident: $type:ident <- $inputs:expr, $vars:expr; $stricts:expr => err $result:expr) => {
             /// Like above, but with $vars.
             #[test]
             fn $name() {
-                for result in parse_for_test($inputs.as_ref(), TEST_ARGS, $stricts, |mf| $type::deduce(mf, &$vars)) {
+                for result in parse_for_test($inputs.as_ref(), TEST_ARGS, $stricts, |mf| {
+                    $type::deduce(mf, &$vars)
+                }) {
                     assert_eq!(result.unwrap_err(), $result);
                 }
             }
@@ -446,17 +491,18 @@ mod test {
             /// Like further above, but with $vars.
             #[test]
             fn $name() {
-                for result in parse_for_test($inputs.as_ref(), TEST_ARGS, $stricts, |mf| $type::deduce(mf, &$vars)) {
+                for result in parse_for_test($inputs.as_ref(), TEST_ARGS, $stricts, |mf| {
+                    $type::deduce(mf, &$vars)
+                }) {
                     println!("Testing {:?}", result);
                     match result {
                         $pat => assert!(true),
-                        _    => assert!(false),
+                        _ => assert!(false),
                     }
                 }
             }
         };
     }
-
 
     mod size_formats {
         use super::*;
@@ -479,7 +525,6 @@ mod test {
         test!(both_7:  SizeFormat <- ["--binary", "--bytes"];   Complain => err Misfire::Duplicate(Flag::Long("binary"), Flag::Long("bytes")));
         test!(both_8:  SizeFormat <- ["--bytes",  "--bytes"];   Complain => err Misfire::Duplicate(Flag::Long("bytes"),  Flag::Long("bytes")));
     }
-
 
     mod time_formats {
         use super::*;
@@ -513,7 +558,6 @@ mod test {
         // If the time-style argument is given, `TIME_STYLE` is overriding.
         test!(override_env:     TimeFormat <- ["--time-style=full-iso"], Some("long-iso".into());  Both => like Ok(TimeFormat::FullISO));
     }
-
 
     mod time_types {
         use super::*;
@@ -550,7 +594,6 @@ mod test {
         // Multiples
         test!(time_uu:   TimeTypes <- ["-u", "--modified"];    Both => Ok(TimeTypes { modified: true, changed: false, accessed: true,  created: false }));
 
-
         // Errors
         test!(time_tea:  TimeTypes <- ["--time=tea"];          Both => err Misfire::BadArgument(&flags::TIME, OsString::from("tea")));
         test!(t_ea:      TimeTypes <- ["-tea"];                Both => err Misfire::BadArgument(&flags::TIME, OsString::from("ea")));
@@ -560,13 +603,11 @@ mod test {
         test!(overridden_2: TimeTypes <- ["-tcr", "-tmod"];    Complain => err Misfire::Duplicate(Flag::Short(b't'), Flag::Short(b't')));
     }
 
-
     mod views {
         use super::*;
 
         use crate::output::grid::Options as GridOptions;
         use crate::output::lines::Options as LineOptions;
-
 
         // Default
         test!(empty:         Mode <- [], None;            Both => like Ok(Mode::Grid(_)));
@@ -591,7 +632,6 @@ mod test {
         test!(lid:           Mode <- ["--long", "--grid"], None;  Both => like Ok(Mode::GridDetails(_)));
         test!(leg:           Mode <- ["-lG"], None;               Both => like Ok(Mode::GridDetails(_)));
 
-
         // Options that do nothing without --long
         test!(just_header:   Mode <- ["--header"], None;  Last => like Ok(Mode::Grid(_)));
         test!(just_group:    Mode <- ["--group"],  None;  Last => like Ok(Mode::Grid(_)));
@@ -601,7 +641,7 @@ mod test {
         test!(just_binary:   Mode <- ["--binary"], None;  Last => like Ok(Mode::Grid(_)));
         test!(just_bytes:    Mode <- ["--bytes"],  None;  Last => like Ok(Mode::Grid(_)));
 
-        #[cfg(feature="git")]
+        #[cfg(feature = "git")]
         test!(just_git:      Mode <- ["--git"],    None;  Last => like Ok(Mode::Grid(_)));
 
         test!(just_header_2: Mode <- ["--header"], None;  Complain => err Misfire::Useless(&flags::HEADER, false, &flags::LONG));
@@ -612,7 +652,7 @@ mod test {
         test!(just_binary_2: Mode <- ["--binary"], None;  Complain => err Misfire::Useless(&flags::BINARY, false, &flags::LONG));
         test!(just_bytes_2:  Mode <- ["--bytes"],  None;  Complain => err Misfire::Useless(&flags::BYTES,  false, &flags::LONG));
 
-        #[cfg(feature="git")]
+        #[cfg(feature = "git")]
         test!(just_git_2:    Mode <- ["--git"],    None;  Complain => err Misfire::Useless(&flags::GIT,    false, &flags::LONG));
     }
 }
