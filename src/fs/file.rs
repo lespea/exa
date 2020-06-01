@@ -204,6 +204,8 @@ impl<'dir> File<'dir> {
         self.metadata.file_type().is_socket()
     }
 
+    /// Whether this file is hidden
+    pub fn is_hidden(&self) -> bool { self.name.starts_with('.') }
 
     /// Again assuming this file is a symlink, follows that link and returns
     /// the result of following it.
