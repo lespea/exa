@@ -1,11 +1,10 @@
 use ansi_term::Style;
-use glob;
 
 use crate::fs::File;
-use crate::options::{flags, Misfire, Vars};
 use crate::options::parser::MatchedFlags;
-use crate::output::file_name::{Classify, FileStyle};
+use crate::options::{flags, Misfire, Vars};
 use crate::output::file_name::FileColours;
+use crate::output::file_name::{Classify, FileStyle};
 use crate::style::Colours;
 
 /// Under what circumstances we should display coloured, rather than plain,

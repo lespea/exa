@@ -5,10 +5,10 @@ use std::io::{Result as IOResult, Write};
 use ansi_term::{ANSIGenericString, ANSIStrings};
 use term_grid as grid;
 
-use crate::fs::{Dir, File};
 use crate::fs::feature::git::GitCache;
 use crate::fs::feature::xattr::FileAttributes;
 use crate::fs::filter::FileFilter;
+use crate::fs::{Dir, File};
 use crate::output::cell::TextCell;
 use crate::output::details::{
     Options as DetailsOptions, Render as DetailsRender, Row as DetailsRow,

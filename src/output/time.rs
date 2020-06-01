@@ -3,9 +3,8 @@
 use std::cmp;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use datetime::{DatePiece, LocalDateTime, TimePiece, TimeZone};
 use datetime::fmt::DateFormat;
-use locale;
+use datetime::{DatePiece, LocalDateTime, TimePiece, TimeZone};
 
 /// Every timestamp in exa needs to be rendered by a **time format**.
 /// Formatting times is tricky, because how a timestamp is rendered can

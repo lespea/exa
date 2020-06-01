@@ -1,8 +1,8 @@
 //! Parsing the options for `DirAction`.
 
 use crate::fs::dir_action::{DirAction, RecurseOptions};
-use crate::options::{flags, Misfire};
 use crate::options::parser::MatchedFlags;
+use crate::options::{flags, Misfire};
 
 impl DirAction {
     /// Determine which action to perform when trying to list a directory.

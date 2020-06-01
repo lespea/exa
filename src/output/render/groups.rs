@@ -38,9 +38,9 @@ pub trait Colours {
 pub mod test {
     use ansi_term::Colour::*;
     use ansi_term::Style;
-    use users::{Group, User};
     use users::mock::MockUsers;
     use users::os::unix::GroupExt;
+    use users::{Group, User};
 
     use crate::fs::fields as f;
     use crate::output::cell::TextCell;

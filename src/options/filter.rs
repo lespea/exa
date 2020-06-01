@@ -1,9 +1,9 @@
 //! Parsing the options for `FileFilter`.
 
-use crate::fs::DotFilter;
 use crate::fs::filter::{FileFilter, GitIgnore, IgnorePatterns, SortCase, SortField};
-use crate::options::{flags, Misfire};
+use crate::fs::DotFilter;
 use crate::options::parser::MatchedFlags;
+use crate::options::{flags, Misfire};
 
 impl FileFilter {
     /// Determines which of all the file filter options to use.

@@ -2,10 +2,8 @@ use std::ffi::OsString;
 use std::fmt;
 use std::num::ParseIntError;
 
-use glob;
-
-use crate::options::{flags, HelpString, VersionString};
 use crate::options::parser::{Arg, Flag, ParseError};
+use crate::options::{flags, HelpString, VersionString};
 
 /// A **misfire** is a thing that can happen instead of listing files -- a
 /// catch-all for anything outside the program’s normal execution.

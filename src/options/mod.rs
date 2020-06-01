@@ -85,12 +85,12 @@ mod filter;
 mod style;
 mod view;
 
-mod help;
-mod version;
-mod misfire;
-pub mod vars;
 mod flags;
+mod help;
+mod misfire;
 mod parser;
+pub mod vars;
+mod version;
 
 /// These **options** represent a parsed, error-checked versions of the
 /// user’s command-line options.

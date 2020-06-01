@@ -4,13 +4,12 @@ use std::ops::Deref;
 use std::sync::{Mutex, MutexGuard};
 
 use datetime::TimeZone;
-use locale;
 use log::debug;
 use users::UsersCache;
 use zoneinfo_compiled::{CompiledData, Result as TZResult};
 
-use crate::fs::{fields as f, File};
 use crate::fs::feature::git::GitCache;
+use crate::fs::{fields as f, File};
 use crate::output::cell::TextCell;
 use crate::output::render::TimeRender;
 use crate::output::time::TimeFormat;

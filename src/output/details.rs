@@ -67,11 +67,11 @@ use std::vec::IntoIter as VecIntoIter;
 use ansi_term::{ANSIGenericString, Style};
 use scoped_threadpool::Pool;
 
-use crate::fs::{Dir, File};
 use crate::fs::dir_action::RecurseOptions;
 use crate::fs::feature::git::GitCache;
 use crate::fs::feature::xattr::{Attribute, FileAttributes};
 use crate::fs::filter::FileFilter;
+use crate::fs::{Dir, File};
 use crate::output::cell::TextCell;
 use crate::output::file_name::FileStyle;
 use crate::output::icons::painted_icon;

@@ -1,12 +1,12 @@
 use lazy_static::lazy_static;
 
 use crate::fs::feature::xattr;
-use crate::options::{flags, Misfire, Vars};
 use crate::options::parser::MatchedFlags;
-use crate::output::{details, grid, lines, Mode, View};
+use crate::options::{flags, Misfire, Vars};
 use crate::output::grid_details::{self, RowThreshold};
 use crate::output::table::{Columns, Environment, Options as TableOptions, SizeFormat, TimeTypes};
 use crate::output::time::TimeFormat;
+use crate::output::{details, grid, lines, Mode, View};
 
 impl View {
     /// Determine which view to use and all of that view’s arguments.
@@ -297,7 +297,7 @@ impl TimeFormat {
         } else if &word == "full-iso" {
             Ok(TimeFormat::FullISO)
         } else {
-            Err(Misfire::BadArgument(&flags::TIME_STYLE, word.into()))
+            Err(Misfire::BadArgument(&flags::TIME_STYLE, word))
         }
     }
 }
@@ -529,7 +529,7 @@ mod test {
     mod time_formats {
         use super::*;
 
-// These tests use pattern matching because TimeFormat doesn’t
+        // These tests use pattern matching because TimeFormat doesn’t
         // implement PartialEq.
 
         // Default behaviour

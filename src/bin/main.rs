@@ -3,7 +3,7 @@ extern crate libc;
 
 use std::env::{args_os, var_os};
 use std::ffi::OsString;
-use std::io::{ErrorKind, stderr, stdout, Write};
+use std::io::{stderr, stdout, ErrorKind, Write};
 use std::process::exit;
 
 use exa::Exa;

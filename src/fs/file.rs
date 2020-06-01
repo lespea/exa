@@ -365,7 +365,7 @@ impl<'dir> File<'dir> {
         Some(if sec < 0 {
             if nsec > 0 {
                 sec += 1;
-                nsec = nsec - 1_000_000_000;
+                nsec -= 1_000_000_000;
             }
             UNIX_EPOCH - Duration::new(sec.abs() as u64, nsec.abs() as u32)
         } else {
@@ -487,8 +487,6 @@ impl<'dir> FileTarget<'dir> {
 /// More readable aliases for the permission bits exposed by libc.
 #[allow(trivial_numeric_casts)]
 mod modes {
-    use libc;
-
     pub type Mode = u32;
     // The `libc::mode_t` type’s actual type varies, but the value returned
     // from `metadata.permissions().mode()` is always `u32`.

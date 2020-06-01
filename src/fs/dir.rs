@@ -177,7 +177,7 @@ impl<'dir, 'ig> Files<'dir, 'ig> {
                             path: path.to_path_buf(),
                             metadata: meta,
                             parent_dir: Some(self.dir),
-                            target_metadata: target_metadata,
+                            target_metadata,
                             is_all_all: false,
                         })
                         .map_err(|e| (path.clone(), Arc::try_unwrap(e).unwrap())),

@@ -1,8 +1,8 @@
 use std::iter::Peekable;
 use std::ops::FnMut;
 
-use ansi_term::{Colour, Style};
 use ansi_term::Colour::*;
+use ansi_term::{Colour, Style};
 
 // Parsing the LS_COLORS environment variable into a map of names to Style values.
 //
