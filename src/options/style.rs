@@ -372,7 +372,7 @@ mod customs_test {
             #[test]
             fn $name() {
                 let mappings: Vec<(glob::Pattern, Style)> = $mappings
-                    .into_iter()
+                    .iter()
                     .map(|t| (glob::Pattern::new(t.0).unwrap(), t.1))
                     .collect();
 
@@ -391,7 +391,7 @@ mod customs_test {
                 $process_expected();
 
                 let mappings: Vec<(glob::Pattern, Style)> = $mappings
-                    .into_iter()
+                    .iter()
                     .map(|t| (glob::Pattern::new(t.0).unwrap(), t.1))
                     .collect();
 
